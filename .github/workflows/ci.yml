@@ -1,0 +1,80 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-eval:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Evaluate flake and checks (no build)
+        run: nix flake check --no-build --override-input ssh-pubkey path:ci/ssh.pub
+
+      - name: Lint (formatting, statix, deadnix, actionlint)
+        run: |
+          nix build --no-link \
+            .#checks.aarch64-linux.formatting \
+            .#checks.aarch64-linux.statix \
+            .#checks.aarch64-linux.deadnix \
+            .#checks.aarch64-linux.actionlint
+
+      - name: Keyless evaluation must fail on the placeholder assertion
+        run: |
+          if output=$(nix eval --raw .#nixosConfigurations.pi4.config.system.build.toplevel.drvPath 2>&1); then
+            echo "ERROR: keyless evaluation succeeded; the placeholder assertion is broken" >&2
+            exit 1
+          fi
+          if ! printf '%s' "$output" | grep -q 'still the placeholder'; then
+            echo "ERROR: keyless evaluation failed for the wrong reason:" >&2
+            printf '%s\n' "$output" >&2
+            exit 1
+          fi
+
+      - name: Keyed evaluation must pass
+        run: nix eval --raw --override-input ssh-pubkey path:ci/ssh.pub .#nixosConfigurations.pi4.config.system.build.toplevel.drvPath >/dev/null
+
+  image:
+    needs: lint-eval
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Select SSH key (repo variable, else CI throwaway)
+        env:
+          PI_SSH_PUBKEY: ${{ vars.PI_SSH_PUBKEY }}
+        run: |
+          if [ -n "$PI_SSH_PUBKEY" ]; then
+            printf '%s\n' "$PI_SSH_PUBKEY" > "$RUNNER_TEMP/ssh.pub"
+          else
+            cp ci/ssh.pub "$RUNNER_TEMP/ssh.pub"
+          fi
+
+      - name: Build SD image
+        run: nix build --override-input ssh-pubkey path:"$RUNNER_TEMP/ssh.pub" .#nixosConfigurations.pi4.config.system.build.sdImage
+
+      - name: Stage artifact + checksums
+        run: |
+          mkdir -p dist
+          cp -- result/sd-image/*.img.zst dist/
+          (cd dist && sha256sum -- *.img.zst > sha256sums.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nixos-sd-image
+          path: dist/

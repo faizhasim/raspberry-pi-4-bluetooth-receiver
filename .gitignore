@@ -1,0 +1,17 @@
+# Nix build outputs
+result
+result-*
+
+# Flake/dev tooling
+.direnv/
+
+# Disk images (never commit multi-GB artifacts)
+*.img
+*.img.zst
+
+# Local SSH keys; only the tracked sentinel is kept
+keys/*
+!keys/placeholder.pub
+
+# macOS
+.DS_Store
