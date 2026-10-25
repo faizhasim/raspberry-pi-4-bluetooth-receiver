@@ -6,7 +6,7 @@
 #     needed (the old `pkgs.linuxPackages_rpi4` override is obsolete)
 #   - adds the Pi 4 initrd modules (pcie-brcmstb, reset-raspberrypi)
 #   - installs pinned Wi-Fi + Bluetooth firmware
-#   - filters device trees to bcm2711-rpi-*.dtb (bcm2711-rpi-4*.dtb with BT on)
+#   - filters device trees to bcm2711-rpi-*.dtb
 #   - disables GRUB and enables generic-extlinux generation
 #   - requests full KMS via the vc4-kms-v3d overlay in the generated config.txt
 #
@@ -42,11 +42,10 @@
   # `hardware.raspberry-pi.firmware.enable` and mount /boot/firmware if needed.
   hardware.raspberry-pi.firmware.uboot.enable = true;
 
-  # Onboard Bluetooth: route the BCM2711 UART0 pins the Bluetooth controller uses.
-  # Pairs with `hardware.bluetooth.enable` (BlueZ) in configuration.nix.
-  # NOTE: with U-Boot enabled the firmware partition uses vendor DTBs
-  # (`useGenerationDeviceTree = false`), so this build-time overlay may not reach
-  # the booted DTB. The vendor DTB normally suffices for onboard BT; verify with
-  # `bluetoothctl show` (nixos-hardware issue #1946).
-  hardware.raspberry-pi."4".bluetooth.enable = true;
+  # Onboard Bluetooth (BlueZ) is enabled in configuration.nix. The BCM2711
+  # vendor DTB configures the Bluetooth UART, and with U-Boot the firmware
+  # partition uses vendor DTBs, so the profile's build-time UART overlay
+  # (`hardware.raspberry-pi."4".bluetooth.enable`) would not reach the booted
+  # DTB. Enable it only if a board revision needs the overlay and you stage
+  # generation DTBs; verify with `bluetoothctl show` (nixos-hardware #1946).
 }

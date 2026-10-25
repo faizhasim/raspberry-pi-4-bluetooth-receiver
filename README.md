@@ -13,7 +13,7 @@ tracked sentinel; your real key is supplied at evaluation time (see
 | Path | Role |
 | --- | --- |
 | `flake.nix` | Inputs, `nixosConfigurations.pi4`, `deploy.nodes.pi4`, formatter, devShell, lint checks |
-| `hardware-configuration.nix` | Boot chain (U-Boot/extlinux), firmware partition, filesystems, Bluetooth pin routing |
+| `hardware-configuration.nix` | Boot chain (U-Boot/extlinux), firmware partition, filesystems |
 | `configuration.nix` | Networking, mDNS, SSH, users, Docker, packages |
 | `keys/placeholder.pub` | Tracked placeholder; override with `--override-input` |
 | `ci/ssh.pub` | Throwaway key for CI builds only |
@@ -119,13 +119,19 @@ copy closures through the remote daemon.
 ### nixos-rebuild (builds on the Pi, deploys)
 
 ```sh
-nixos-rebuild switch \
+nix run nixpkgs#nixos-rebuild -- switch \
+  --no-reexec \
   --flake .#pi4 \
   --override-input ssh-pubkey path:"$KEY" \
   --target-host nixos@pi4.local \
   --build-host  nixos@pi4.local \
   --elevate=sudo
 ```
+
+`nixos-rebuild` is not installed on macOS; `nix run` invokes it from nixpkgs.
+`--no-reexec` keeps the darwin instance (re-exec would try to run the
+aarch64-linux binary). On the Pi itself, drop `--target-host`/`--build-host`
+and run `nixos-rebuild switch` directly.
 
 ### deploy-rs (atomic switch with automatic rollback)
 
@@ -172,10 +178,9 @@ kernel from macOS for the first bring-up.
   Runtime sync is opt-in: set `hardware.raspberry-pi.firmware.enable = true`
   and mount `/boot/firmware`. The bootloader *EEPROM* is not managed by NixOS —
   update it with `nix shell nixpkgs#raspberrypi-eeprom` for USB/NVMe boot.
-- **Bluetooth**: BlueZ is enabled, plus the board profile's UART pin-routing
-  overlay. With U-Boot enabled the firmware partition uses vendor DTBs
-  (`useGenerationDeviceTree = false`), so that build-time overlay may not reach
-  the booted DTB; the vendor DTB normally suffices for onboard BT. Verify with
+- **Bluetooth**: BlueZ is enabled. Onboard BT uses the vendor DTB's UART
+  configuration; the profile's build-time UART overlay is not staged into the
+  SD image (U-Boot uses vendor DTBs), so it is not enabled. Verify with
   `bluetoothctl show`; see nixos-hardware issue #1946.
 - **A2DP**: for an audio receiver add PipeWire + WirePlumber and the bluez audio
   backend — deliberately out of scope for this base config.

@@ -50,8 +50,8 @@
   # `root` is already the default trusted user; add only the deploy user.
   nix.settings.trusted-users = [ user ];
 
-  # Onboard Bluetooth (BlueZ). The UART pin-routing overlay is enabled in
-  # hardware-configuration.nix (`hardware.raspberry-pi."4".bluetooth.enable`).
+  # Onboard Bluetooth (BlueZ). Onboard BT uses the vendor DTB's UART
+  # configuration; see the Bluetooth note in hardware-configuration.nix.
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
