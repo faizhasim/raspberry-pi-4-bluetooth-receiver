@@ -102,6 +102,7 @@
 
           ./hardware-configuration.nix
           ./configuration.nix
+          ./receiver.nix
         ];
       };
 

@@ -111,6 +111,38 @@ ssh nixos@pi4.local
 terminfo for wezterm/foot is installed so terminal UIs (herdr, zellij, tmux)
 render correctly from a macOS terminal emulator.
 
+## Receiver mode (Samsung M7 → Pi → HK Aura)
+
+The Pi is an A2DP **sink**: the monitor pairs with it over Bluetooth, and the Pi
+plays the stream out its **3.5 mm jack** into the Aura's aux input. BlueALSA runs
+as a system daemon, so this works headless (no login or PipeWire session).
+
+1. On the M7: **Settings → Sound → Sound Output → Bluetooth Speaker List**, then
+   select the Pi (`pi4`). Pairing is auto-accepted.
+2. Audio comes out the Pi's 3.5 mm jack; set the level with
+   `alsamixer -c Headphones`.
+3. To auto-reconnect, trust the monitor once:
+
+   ```sh
+   bluetoothctl trust <M7-MAC>
+   ```
+
+**AirPlay (bonus):** `shairport-sync` is enabled with the ALSA backend, so the Pi
+also appears as an AirPlay 1 receiver named `Pi4 Receiver`. AirPlay 2 would need
+the `nqptp` service and an `enableAirplay2` package override.
+
+**If the M7's Bluetooth is still unreliable** (it is the failing link), the
+deterministic fallback is HDMI ARC:
+`M7 HDMI(ARC) → HDMI-ARC audio extractor → Aura optical/3.5 mm`. No Pi needed
+for that path.
+
+**If the Pi's internal radio is flaky,** use a USB Bluetooth dongle and disable
+the internal one:
+
+```nix
+hardware.raspberry-pi.configtxt.deviceTreeOverlays.all = [ { disable-bt = { }; } ];
+```
+
 ## 4. Update over the network (no re-flashing)
 
 `nix.settings.trusted-users` includes `nixos`, so the deploy user can build and
