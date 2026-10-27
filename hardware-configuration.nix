@@ -23,6 +23,10 @@
     # The board profile and the SD-image module already disable GRUB and enable
     # generic-extlinux generation, so there is nothing to set here.
 
+    # The generic aarch64 SD image's `all-hardware` profile requests modules the
+    # RPi downstream kernel does not build (e.g. dw-hdmi); skip missing ones.
+    initrd.allowMissingModules = true;
+
     supportedFilesystems = {
       # The pinned Raspberry Pi kernel does not build the ZFS module; the base
       # image profile enables ZFS, so it must be explicitly turned off.
