@@ -93,9 +93,12 @@ nix shell nixpkgs#zstd -c zstd -dc result/sd-image/*.img.zst > pi4.img
 # CI artifact: download it, then decompress the flat file.
 nix shell nixpkgs#zstd -c zstd -dc nixos-image-sd-card-*.img.zst > pi4.img
 
-diskutil list
-diskutil unmountDisk /dev/disk4
-sudo dd if=pi4.img of=/dev/rdisk4 bs=4m
+diskutil list                    # confirm the card, e.g. /dev/disk4
+diskutil unmountDisk /dev/disk4  # required before raw writes
+
+# /bin/dd is macOS BSD dd (lowercase m). A Nix/uutils `dd` in PATH wants `4M`.
+sudo /bin/dd if=pi4.img of=/dev/rdisk4 bs=16m
+sudo diskutil eject /dev/disk4
 ```
 
 Or decompress the `.img.zst` and write the `.img` with Raspberry Pi Imager.
