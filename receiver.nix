@@ -27,19 +27,18 @@
   };
 
   # System-level BlueALSA daemon + ALSA plugin (no user session needed).
-  # Pin ALSA's default to the 3.5 mm jack. `dmix` lets Bluetooth and AirPlay
-  # share the device instead of one failing with EBUSY. (Pi 4 card name is
-  # `Headphones`; verify with `aplay -l`.)
+  # Pin ALSA's default to the 3.5 mm jack. `plughw` is used instead of `dmix`:
+  # the bcm2835 Headphones card exposes 8 subdevices, and `dmix` hangs on this
+  # card under the service sandbox. (Card name is `Headphones`; `aplay -l`.)
   hardware.alsa = {
     enable = true;
     enableBluetooth = true;
-    defaultDevice.playback = "dmix:CARD=Headphones,DEV=0";
+    defaultDevice.playback = "plughw:CARD=Headphones";
   };
 
   # BlueALSA provides the daemon; this is the A2DP -> ALSA playback bridge.
-  # It plays to ALSA's default PCM, pinned to the 3.5 mm jack above.
-  # `Headphone` is the bcm2835 mixer control; check with
-  # `amixer -c Headphones scontrols` if AVRCP volume misbehaves.
+  # It plays to the 3.5 mm jack explicitly (ALSA's default is pinned above).
+  # `PCM` is the bcm2835 mixer control (the only one on card 0).
   systemd.services.bluealsa-aplay = {
     description = "BlueALSA A2DP playback to the 3.5 mm output";
     wantedBy = [ "multi-user.target" ];
@@ -53,7 +52,7 @@
       # is merged as a drop-in; `""` resets the packaged ExecStart before ours.
       ExecStart = [
         ""
-        "${pkgs.bluez-alsa}/bin/bluealsa-aplay --single-audio --mixer-device=hw:CARD=Headphones --mixer-name=Headphone"
+        "${pkgs.bluez-alsa}/bin/bluealsa-aplay --single-audio --pcm=plughw:CARD=Headphones --mixer-device=hw:CARD=Headphones --mixer-name=PCM"
       ];
       Restart = "always";
       RestartSec = 5;
@@ -75,7 +74,7 @@
   };
 
   # AirPlay 1 bonus (shairport-sync is built with ALSA support by default).
-  # It shares the same `dmix` default as Bluetooth. AirPlay 2 additionally
+  # It shares the same `plughw` default as Bluetooth. AirPlay 2 additionally
   # needs `nqptp` and an `enableAirplay2` package override; see README.
   services.shairport-sync = {
     enable = true;

@@ -68,6 +68,7 @@
       "wheel"
       "docker"
       "networkmanager"
+      "audio"
     ];
     openssh.authorizedKeys.keys = [ sshPublicKey ];
     # No password is set (SSH is key-only). For a console recovery password,
